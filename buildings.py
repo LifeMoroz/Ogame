@@ -63,9 +63,9 @@ class Building:
 
     def need_energy(self):
         if self.type in ["Metal_mine", "Crystal_mine"]:
-            return math.ceil(10 * (FastPow(1.1, self.level) - FastPow(1.1, self.level)))
+            return math.ceil(10 * (FastPow(1.1, self.level + 1) - FastPow(1.1, self.level)))
         if self.type == "Deuterium_mine":
-            return math.ceil(20 * (FastPow(1.1, self.level) - FastPow(1.1, self.level)))
+            return math.ceil(20 * (FastPow(1.1, self.level + 1) - FastPow(1.1, self.level)))
         return 0
 
     def repaid_coefficient(self, additional_cost=0):

@@ -19,6 +19,8 @@ def what_build_now(has_energy, one_energy_cost=0):
     """
     Calculating based on the speed of payback
     """
+    if has_energy < 0:
+        return Building('Solar_plant', driver)
     repaid_coef = 1
     what_build = ''
     mines = {}
@@ -84,16 +86,19 @@ pl = PlanetInfo(driver)
 driver.get(baseURL + "resources")
 try:
     while 1:
+        if not driver.current_url == baseURL + "resources":
+            driver.get(baseURL + "resources")
         try:
             time_string = driver.find_element_by_css_selector("#test.time").text
-            if time_string == "готов":
+            if time_string == u"готов":
                 time.sleep(2)
                 continue
             logging.info("Can't build, workers are busy")
             parts = time_string.split(" ")
             parts.reverse()
+            seconds = 0
             try:
-                seconds = int(parts[0][:-1])
+                seconds += int(parts[0][:-1])
                 seconds += 60 * int(parts[1][:-1])
                 seconds += 60 * 60 * int(parts[2][:-1])
                 seconds += 24 * 60 * 60 * int(parts[3][:-1])
