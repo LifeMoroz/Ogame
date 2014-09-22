@@ -24,7 +24,7 @@ def what_build_now(has_energy, one_energy_cost=0):
     mines = {}
     for build_t in ['Metal_mine', 'Crystal_mine', 'Deuterium_mine']:
         mines[build_t] = Building(build_t, driver, pl)
-        if mines[build_t].need_energy() - has_energy < 0:
+        if mines[build_t].need_energy() > has_energy:
             repaid_coef_cur = mines[build_t].repaid_coefficient()
         else:
             repaid_coef_cur = mines[build_t].repaid_coefficient(one_energy_cost *
@@ -54,7 +54,7 @@ def build_smth():
     logging.info("Resources: OK")
     if building.need_energy() > Resource(driver).energy:
         logging.info("Energy: Not enough energy, try to build solar_plant")
-        if building.cost()[0] >= res.metal or building.cost()[1] >= res.crystal or building.cost()[2] >= res.deuterium:
+        if solar_plant_next_lvl.cost()[0] >= res.metal or solar_plant_next_lvl.cost()[1] >= res.crystal or solar_plant_next_lvl.cost()[2] >= res.deuterium:
             logging.info("Resources: Not enough resources")
             return 1
         logging.info("Resources for solar plant: OK")
@@ -86,7 +86,7 @@ try:
     while 1:
         try:
             time_string = driver.find_element_by_css_selector("#test.time").text
-            if time_string == "готов":
+            if time_string == u"готов":
                 time.sleep(2)
                 continue
             logging.info("Can't build, workers are busy")
@@ -97,9 +97,10 @@ try:
                 seconds += 60 * int(parts[1][:-1])
                 seconds += 60 * 60 * int(parts[2][:-1])
                 seconds += 24 * 60 * 60 * int(parts[3][:-1])
-            except IndexError:
-                pass
-            logging.info("Going to sleep until the buildng is finish")
+            except (IndexError, UnicodeEncodeError):
+				if not seconds:
+					seconds = 10
+            logging.info("Going to sleep until the building is finish")
             time.sleep(seconds)
         except NoSuchElementException:
             if build_smth() == 1:

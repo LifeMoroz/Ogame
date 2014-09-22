@@ -8,7 +8,7 @@ class PlanetInfo:
         url = driver.current_url
         if url != "http://s122-ru.ogame.gameforge.com/game/index.php?page=overview":
             driver.get("http://s122-ru.ogame.gameforge.com/game/index.php?page=overview")
-        WebDriverWait(driver, 5, 0.5).until(lambda x: x.find_element_by_id("temperatureContentField").is_displayed())
+        WebDriverWait(driver, 5, 0.5).until(lambda x: len(x.find_element_by_id("temperatureContentField").text) > 6)
         print driver.find_element_by_id("temperatureContentField").text
         arr = driver.find_element_by_id("temperatureContentField").text.split(" ")  #от 10°C до 50°C
         print arr
