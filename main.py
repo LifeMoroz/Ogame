@@ -1,4 +1,5 @@
 # -*- coding:  utf-8 -*-
+import datetime
 from selenium import webdriver
 import time
 from selenium.common.exceptions import NoSuchElementException
@@ -53,8 +54,9 @@ def build_smth():
         return 1
     logging.info("Resources: OK")
     if building.need_energy() > Resource(driver).energy:
-        logging.info("Energy: Not enough energy, try to build solar_plant")
-        if solar_plant_next_lvl.cost()[0] >= res.metal or solar_plant_next_lvl.cost()[1] >= res.crystal or solar_plant_next_lvl.cost()[2] >= res.deuterium:
+        logging.info("Energy: Not enough energy, now: " + building.need_energy() + ". Try to build solar_plant")
+        if solar_plant_next_lvl.cost()[0] >= res.metal or solar_plant_next_lvl.cost()[1] >= res.crystal or \
+                        solar_plant_next_lvl.cost()[2] >= res.deuterium:
             logging.info("Resources: Not enough resources")
             return 1
         logging.info("Resources for solar plant: OK")
@@ -79,6 +81,7 @@ def connect():
     logging.info("Log in successful")
     baseURL = driver.current_url.split("=")[0] + "="
 
+
 connect()
 pl = PlanetInfo(driver)
 driver.get(baseURL + "resources")
@@ -91,16 +94,15 @@ try:
                 continue
             logging.info("Can't build, workers are busy")
             parts = time_string.split(" ")
-            parts.reverse()
-            try:
-                seconds = int(parts[0][:-1])
-                seconds += 60 * int(parts[1][:-1])
-                seconds += 60 * 60 * int(parts[2][:-1])
-                seconds += 24 * 60 * 60 * int(parts[3][:-1])
-            except (IndexError, UnicodeEncodeError):
-				if not seconds:
-					seconds = 10
-            logging.info("Going to sleep until the building is finish")
+            seconds = 3
+            for part in parts:
+                seconds += {
+                    u'с': 1,
+                    u'м': 60,
+                    u'ч': 3600,
+                    u'д': 86400
+                }[part[-1]] * int(part[:-1])
+            logging.info("Going to sleep until the building is finish: " + datetime.timedelta(seconds=seconds))
             time.sleep(seconds)
         except NoSuchElementException:
             if build_smth() == 1:
