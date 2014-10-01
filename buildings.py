@@ -1,6 +1,8 @@
 # -*- coding:  utf-8 -*-
+import logging
 import math
 from selenium.webdriver.support.ui import WebDriverWait
+from resource_work import Resource
 
 TIME_TO_REPAID = 90
 ACCELERATION = 2
@@ -36,7 +38,10 @@ class Building:
 
     def __init__(self, t, driver, planet_info=None):
         if not Building.TYPES.get(t, None):
-            raise ValueError("I don't know this building")
+            if __debug__:
+                raise ValueError("I don't know this building")
+            else:
+                logging.exception("Unsupported building")
 
         self.type = t
         self.driver = driver
@@ -53,10 +58,16 @@ class Building:
 
     def build(self, res):
         cost = self.cost()
-        if cost[0] >= res.metal or cost[1] >= res.crystal or cost[2] >= res.deuterium:
-            raise ValueError("No enough resources")
+        if cost[0] > res.metal or cost[1] > res.crystal or cost[2] > res.deuterium:
+            if __debug__:
+                raise ValueError("No enough resources")
+            else:
+                logging.exception("No enough resources")
         if self.need_energy() > 0 and self.need_energy() > res.energy:
-            raise ValueError("No energy")
+            if __debug__:
+                raise ValueError("No energy")
+            else:
+                logging.exception("No enough energy")
         self.web_obj.find_element_by_css_selector(".fastBuild.tooltip").click()
         WebDriverWait(self.driver, 3, 0.5).until(
             lambda x: self.web_obj.find_element_by_id("b_supply" + Building.TYPES.get(self.type)))
@@ -83,7 +94,7 @@ class Building:
             return diff_per_hour * 1.5 * TIME_TO_REPAID * 24 / (self.cost_in_metal() + additional_cost)
 
     def cost(self, lvl=None):
-        if not lvl:
+        if lvl is None:
             lvl = self.level  # next level
         else:
             lvl -= 1
@@ -102,10 +113,8 @@ class Building:
         return arr[0] + arr[1] * 1.5 + arr[2] * 2.5
 
     def produce(self, lvl=None):
-        if not lvl:
-            lvl = self.level  # for next level
-        else:
-            lvl -= 1
+        if lvl is None:
+            lvl = self.level + 1  # for next level
         if self.type == "Metal_mine":
             return math.ceil(ACCELERATION * 30 * lvl * FastPow(1.1, lvl))  # metal
         if self.type == "Crystal_mine":
@@ -114,3 +123,54 @@ class Building:
             return math.ceil(ACCELERATION * 10 * lvl * FastPow(1.1, lvl) * (-0.002 * self.avg_t + 1.28))  # deuterium
         if self.type == "Solar_plant":
             return math.ceil(20 * lvl * FastPow(1.1, lvl))  # energy
+
+    @staticmethod
+    def what_build_now(driver, planet_info, has_energy, one_energy_cost=0):
+        """
+        Calculating based on the speed of payback
+        """
+        repaid_coef = 1
+        what_build = ''
+        mines = {}
+        for build_t in ['Metal_mine', 'Crystal_mine', 'Deuterium_mine']:
+            mines[build_t] = Building(build_t, driver, planet_info)
+            if mines[build_t].need_energy() - has_energy < 0:
+                repaid_coef_cur = mines[build_t].repaid_coefficient()
+            else:
+                repaid_coef_cur = mines[build_t].repaid_coefficient(one_energy_cost *
+                                                                    (mines[build_t].need_energy() - has_energy))
+            if not repaid_coef_cur:
+                raise Exception("Smth wrong")
+            logging.info(build_t + " w'll need energy: " + str(mines[build_t].need_energy()))
+            logging.info(build_t + " w'll produce: " + str(mines[build_t].produce()))
+            logging.info(build_t + " w'll cost: " + str(mines[build_t].cost()))
+            if repaid_coef <= repaid_coef_cur:
+                repaid_coef = repaid_coef_cur
+                what_build = build_t
+
+        return mines[what_build]
+
+    @staticmethod
+    def build_smth(driver, planet_info):
+        solar_plant_next_lvl = Building('Solar_plant', driver)
+        res = Resource(driver)
+        building = Building.what_build_now(driver, planet_info, Resource(driver).energy,
+                                           solar_plant_next_lvl.cost_in_metal() / solar_plant_next_lvl.produce())
+        logging.info("Want to build: " + building.type)
+        if not building:
+            return 404
+        if building.cost()[0] > res.metal or building.cost()[1] > res.crystal or building.cost()[2] > res.deuterium:
+            logging.info("Resources: Not enough resources")
+            return -1
+        logging.info("Resources: OK")
+        if building.need_energy() > Resource(driver).energy:
+            logging.info("Energy: Not enough energy, try to build solar_plant")
+            if solar_plant_next_lvl.cost()[0] > res.metal or solar_plant_next_lvl.cost()[1] > res.crystal \
+                    or solar_plant_next_lvl.cost()[2] > res.deuterium:
+                logging.info("Resources: Not enough resources")
+                return -1
+            logging.info("Resources for solar plant: OK")
+            solar_plant_next_lvl.build(Resource(driver))
+        else:
+            logging.info("Energy: OK")
+            building.build(Resource(driver))

@@ -1,16 +1,40 @@
 # -*- coding:  utf-8 -*-
+from selenium.common.exceptions import TimeoutException
+import time
+from config import Config
+
 __author__ = 'Ruslan'
 from selenium.webdriver.support.wait import WebDriverWait
 
 
+class Empire:
+    def __init__(self):
+        self.planets = {}
+        ids = []
+        for planet in Config.driver.find_elements_by_css_selector('.smallplanet'):
+            ids.append(planet.get_attribute('id').split('-')[1])
+        for planet_id in ids:
+            if not Config.driver.find_elements_by_css_selector('#planet-' + planet_id + '> .active'):
+                Config.driver.find_element_by_id('planet-' + planet_id).click()
+            self.planets[planet_id] = PlanetInfo(Config.driver)
+            time.sleep(1)
+
+
 class PlanetInfo:
     def __init__(self, driver):
-        url = driver.current_url
-        if url != "http://s122-ru.ogame.gameforge.com/game/index.php?page=overview":
+        if not "http://s122-ru.ogame.gameforge.com/game/index.php?page=overview" in driver.current_url :
             driver.get("http://s122-ru.ogame.gameforge.com/game/index.php?page=overview")
-        WebDriverWait(driver, 5, 0.5).until(lambda x: len(x.find_element_by_id("temperatureContentField").text) > 6)
-        print driver.find_element_by_id("temperatureContentField").text
-        arr = driver.find_element_by_id("temperatureContentField").text.split(" ")  #от 10°C до 50°C
+        count = 0
+        while count < 3:
+            try:
+                WebDriverWait(driver, 5, 0.5).until(
+                    lambda x: len(x.find_element_by_id("temperatureContentField").text) > 6)
+                break
+            except TimeoutException:
+                driver.save_screenshot("./screen.jpg")
+                count += 1
+                driver.refresh()
+                continue
+        arr = driver.find_element_by_id("temperatureContentField").text.split(" ")
         print arr
         self.avg_t = (int(arr[3].split(u"\xb0")[0]) - int(arr[1].split(u"\xb0")[0])) / 2
-        driver.get(url)

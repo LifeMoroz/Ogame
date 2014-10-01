@@ -29,5 +29,13 @@ class Resource:
 
 
 class SavedResources:
-    def __init__(self, res):
-        self.metal, self.crystal, self.deuterium, self.energy = res.save_resoures()
+    def __init__(self, res=None, metal=None, crystal=None, deuterium=None, energy=None):
+        if res:
+            self.metal, self.crystal, self.deuterium, self.energy = res.save_resoures()
+        else:
+            if metal is None or crystal is None or deuterium is None or energy is None:
+                raise Exception("Can't save anyth")
+            self.metal = metal
+            self.crystal = crystal
+            self.deuterium = deuterium
+            self.energy = energy
