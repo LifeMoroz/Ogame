@@ -28,7 +28,7 @@ class PlanetInfo:
         while count < 3:
             try:
                 WebDriverWait(driver, 5, 0.5).until(
-                    lambda x: len(x.find_element_by_id("temperatureContentField").text) > 6)
+                    lambda x: len(x.find_element_by_id("honorContentField").text) > 0)
                 break
             except TimeoutException:
                 driver.save_screenshot("./screen.jpg")
@@ -38,3 +38,7 @@ class PlanetInfo:
         arr = driver.find_element_by_id("temperatureContentField").text.split(" ")
         print arr
         self.avg_t = (int(arr[3].split(u"\xb0")[0]) - int(arr[1].split(u"\xb0")[0])) / 2
+        coords = driver.find_element_by_id('positionContentField').text
+        self.coords = {'galaxy': coords.split[0][2],
+                       'system': coords.split(':')[1],
+                       'position': coords.split(':')[1][:-1]}
