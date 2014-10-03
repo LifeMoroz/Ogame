@@ -44,7 +44,7 @@ def building_circle(**kwargs):
     if Building.build_smth(Config.driver, kwargs['planet_info']) != 0:
         return 60  # Wait until has resources
     else:
-        logging.warning("Time to build smth")
+        pass
 
 
 # noinspection PyUnresolvedReferences
@@ -53,45 +53,57 @@ def defence_circle(**kwargs):
         Config.driver.get(Config.base_url + "resources")
     else:
         Config.driver.refresh()
-    fleets = Config.driver.find_elements_by_css_selector('.eventFleet')
+    fleets = Config.driver.find_elements_by_css_selector('.eventFleet > .hostile')
+    missions = {}
     for fleet in fleets:
-        try:
-            fleet.find_element_by_css_selector('.hostile')
-            if not fleet.get_attribute('id').split('-')[1] in defence_circle.missions.keys():
-                coords = fleet.find_element_by_css_selectot('.destFleet').text
-                arrival_time = fleet.find_element_by_css_selectot('.arrivalTime').text.split(' ')[0].split(':')
+        if fleet.get_attribute('data-mission-type') == 1:
+            coords = fleet.find_element_by_css_selectot('.destFleet').text
+            arrival_time = fleet.find_element_by_css_selectot('.arrivalTime').text.split(' ')[0].split(':')
 
-                defence_circle.missions[fleet.get_attribute('id').split('-')[1]] = \
-                    {
-                        'dest': {'galaxy': coords.split[0][2],
-                                 'system': coords.split(':')[1],
-                                 'position': coords.split(':')[1][:-1]},
-                        'arrival_time': {'hour': arrival_time[0],
-                                         'minutes': arrival_time[1],
-                                         'second': arrival_time[2]}
-                    }
+            missions[fleet.get_attribute('id').split('-')[1]] = \
+                {
+                    'dest': {'galaxy': coords.split[0][2],
+                             'system': coords.split(':')[1],
+                             'position': coords.split(':')[1][:-1]},
+                    'arrival_time': int(arrival_time[0]) * 3600 + int(arrival_time[1]) * 60 + int(arrival_time[2])
+                }
 
-        except NoSuchElementException:
-            continue
-    if defence_circle.mission:
-        logging.warning('attack!')
-    if not 'noAttack' in Config.driver.find_element_by_id('attack_alert').get_attribute('class'):
-        defence_circle.mission = {0: Mission(Config.driver, fleet='all',
-                                             target={'galaxy': 1, 'system': 134, 'position': 10}, speed=10,
-                                             mission='Transport', res=Resource(Config.driver))}
+    for fleet_id, fleet_params in missions:
+        if fleet_params['arrival_time'] - datetime.datetime.now().hour * 3600 - datetime.datetime.now().minute * 60 - \
+                datetime.datetime.now().second < 60:
+            for pl_id, pl in kwargs['empire'].planets:
+                if pl.coords == fleet_params['dest']:
+                    Config.driver.find_element_by_id('planet-' + pl_id).click()
+            defence_circle.missions[fleet_params['arrival_time']] = Mission(Config.driver, fleet='all',
+                                                                            target={'galaxy': 1,
+                                                                                    'system': 134,
+                                                                                    'position': 10},
+                                                                            speed=10, mission='Transport',
+                                                                            res=Resource(Config.driver))
 
-    else:
-        return 60 * 30
+    for arrival_time, mission in defence_circle.missions:
+        if arrival_time > datetime.datetime.now().hour * 3600 - datetime.datetime.now().minute * 60 - \
+                datetime.datetime.now().second:
+            mission.stop_mission()
+            del defence_circle.missions[arrival_time]
+
+    return 60
+
+
+def ship_building(**kwargs):
+    pass
 
 
 def main_circle():
-    defence_circle.mission = {}
+    defence_circle.missions = {}
     list_activities = []
     empire = Empire()
     for planet_id, planet_info in empire.planets.items():
         list_activities.append({'time': 0, 'callback': {'function': building_circle,
                                                         'kwargs': {'planet_id': planet_id,
                                                                    'planet_info': planet_info}}})
+    list_activities.append({'time': 0, 'callback': {'function': defence_circle,
+                                                    'kwargs': {'empire': empire}}})
     timer = Timer(list_activities)
     timer.start()
     while 1:
@@ -105,14 +117,13 @@ def main_circle():
 
 if __name__ == '__main__':
     Config()
-    while 1:
-        try:
-            main_circle()
-        except NoSuchElementException:
-            if Config.driver.current_url == "http://ru.ogame.gameforge.com/":
-                Config.driver.quit()
-                Config()
-                continue
-        finally:
-            Config.driver.save_screenshot("./screenshot.jpg")
-            Config.driver.quit()
+    try:
+        while 1:
+            try:
+                main_circle()
+            except NoSuchElementException:
+                if Config.driver.current_url == "http://ru.ogame.gameforge.com/":
+                    Config.driver.quit()
+                    Config()
+    finally:
+        Config.driver.quit()

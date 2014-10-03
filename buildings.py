@@ -125,19 +125,21 @@ class Building:
             return math.ceil(20 * lvl * FastPow(1.1, lvl))  # energy
 
     @staticmethod
-    def what_build_now(driver, planet_info, has_energy, one_energy_cost=0):
+    def what_build_now(driver, planet_info, has_energy):
         """
         Calculating based on the speed of payback
         """
         repaid_coef = 1
         what_build = ''
         mines = {}
+        solar_plant_next_lvl = Building('Solar_plant', driver)
         for build_t in ['Metal_mine', 'Crystal_mine', 'Deuterium_mine']:
             mines[build_t] = Building(build_t, driver, planet_info)
             if mines[build_t].need_energy() - has_energy < 0:
                 repaid_coef_cur = mines[build_t].repaid_coefficient()
             else:
-                repaid_coef_cur = mines[build_t].repaid_coefficient(one_energy_cost *
+                repaid_coef_cur = mines[build_t].repaid_coefficient(solar_plant_next_lvl.cost_in_metal()
+                                                                    / solar_plant_next_lvl.produce() *
                                                                     (mines[build_t].need_energy() - has_energy))
             if not repaid_coef_cur:
                 raise Exception("Smth wrong")
@@ -148,29 +150,19 @@ class Building:
                 repaid_coef = repaid_coef_cur
                 what_build = build_t
 
-        return mines[what_build]
+        if mines[what_build].need_energy() > Resource(driver).energy:
+            return solar_plant_next_lvl
+        else:
+            return mines[what_build]
 
     @staticmethod
     def build_smth(driver, planet_info):
-        solar_plant_next_lvl = Building('Solar_plant', driver)
         res = Resource(driver)
-        building = Building.what_build_now(driver, planet_info, Resource(driver).energy,
-                                           solar_plant_next_lvl.cost_in_metal() / solar_plant_next_lvl.produce())
+        building = Building.what_build_now(driver, planet_info, Resource(driver).energy)
         logging.info("Want to build: " + building.type)
         if not building:
-            return 404
-        if building.cost()[0] > res.metal or building.cost()[1] > res.crystal or building.cost()[2] > res.deuterium:
-            logging.info("Resources: Not enough resources")
             return -1
-        logging.info("Resources: OK")
-        if building.need_energy() > Resource(driver).energy:
-            logging.info("Energy: Not enough energy, try to build solar_plant")
-            if solar_plant_next_lvl.cost()[0] > res.metal or solar_plant_next_lvl.cost()[1] > res.crystal \
-                    or solar_plant_next_lvl.cost()[2] > res.deuterium:
-                logging.info("Resources: Not enough resources")
-                return -1
-            logging.info("Resources for solar plant: OK")
-            solar_plant_next_lvl.build(Resource(driver))
+        if building.cost()[0] > res.metal or building.cost()[1] > res.crystal or building.cost()[2] > res.deuterium:
+            return -1
         else:
-            logging.info("Energy: OK")
-            building.build(Resource(driver))
+            return building.build(Resource(driver))

@@ -120,3 +120,16 @@ class Fleet:
                 logging.exception("Incorrect result")
         else:
             self.fleet = fleet
+
+    @staticmethod
+    def build_ships(driver, fleet):
+        if driver.current_url != Config.base_url + 'shipyard':
+            driver.get(Config.base_url + 'shipyard')
+        else:
+            driver.refresh()
+
+        for t, num in fleet:
+            driver.find_element_by_css_selector("#details" + Fleet.TYPES[t]).click()
+            WebDriverWait(driver, 5, 0.5).until(lambda x: x.find_elements_by_id('shipyard_' + Fleet.TYPES[t]
+                                                                                + '_large').is_displayed())
+            driver.find_element_by_id('number').send_keys(num)

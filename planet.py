@@ -36,9 +36,8 @@ class PlanetInfo:
                 driver.refresh()
                 continue
         arr = driver.find_element_by_id("temperatureContentField").text.split(" ")
-        print arr
         self.avg_t = (int(arr[3].split(u"\xb0")[0]) - int(arr[1].split(u"\xb0")[0])) / 2
         coords = driver.find_element_by_id('positionContentField').text
-        self.coords = {'galaxy': coords.split[0][2],
+        self.coords = {'galaxy': coords[2],
                        'system': coords.split(':')[1],
                        'position': coords.split(':')[1][:-1]}
