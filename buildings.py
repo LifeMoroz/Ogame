@@ -158,6 +158,8 @@ class Building:
     @staticmethod
     def build_smth(driver, planet_info):
         res = Resource(driver)
+        logging.info("Going to planet: " + ':'.join([planet_info.coords['galaxy'], planet_info.coords['system'],
+                                                     planet_info.coords['position']]))
         building = Building.what_build_now(driver, planet_info, Resource(driver).energy)
         logging.info("Want to build: " + building.type)
         if not building:

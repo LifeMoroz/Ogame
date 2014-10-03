@@ -46,7 +46,8 @@ class Mission:
         if speed > 100:
             raise ValueError('More than speed of light?')
         self.mission = Mission.TYPE[mission]
-        self.fleet = Fleet(driver, fleet)
+        self._add_ships(fleet)
+        self.fleet = Fleet(fleet)
         self.target = target
         for k, v in target:
             driver.find_element_by_id(k).send_keys(v)
@@ -76,6 +77,22 @@ class Mission:
         except NoSuchElementException:
             raise FleetException("Fleet already returns")
 
+    @staticmethod
+    def _add_ships(driver, fleet):
+        if fleet == 'all':
+            driver.find_element_by_css_selector('#sendall').click()
+        else:
+            for t, num in fleet:
+                send = driver.find_element_by_css_selector("#button" + Fleet.TYPES[t] + " > input")
+                if send.get_attribute('disabled'):
+                    if __debug__:
+                        raise FleetException('No such type of ships on planet')
+                else:
+                    send.send_keys(num)
+
+        driver.find_element_by_id('continue').click()
+        return 0
+
 
 class Fleet:
     TYPES = {
@@ -96,30 +113,8 @@ class Fleet:
             'Espionage Probe': '210',
     }
 
-    @staticmethod
-    def _add_ships(driver, fleet):
-        if fleet == 'all':
-            driver.find_element_by_css_selector('#sendall').click()
-        else:
-            for t, num in fleet:
-                send = driver.find_element_by_css_selector("#button" + Fleet.TYPES[t] + " > input")
-                if send.get_attribute('disabled'):
-                    if __debug__:
-                        raise FleetException('No such type of ships on planet')
-                else:
-                    send.send_keys(num)
-
-        driver.find_element_by_id('continue').click()
-        return 0
-
-    def __init__(self, driver, fleet):
-        if self._add_ships(driver, fleet) != 0:
-            if __debug__:
-                raise FleetException("Smth wrong")
-            else:
-                logging.exception("Incorrect result")
-        else:
-            self.fleet = fleet
+    def __init__(self, fleet):
+        self.fleet = fleet
 
     @staticmethod
     def build_ships(driver, fleet):
@@ -133,3 +128,12 @@ class Fleet:
             WebDriverWait(driver, 5, 0.5).until(lambda x: x.find_elements_by_id('shipyard_' + Fleet.TYPES[t]
                                                                                 + '_large').is_displayed())
             driver.find_element_by_id('number').send_keys(num)
+
+    def __add__(self, other):
+        s = {}
+        for t, num in self.fleet:
+            s[t] = num + other.get(t, 0)
+        for t, num in other:
+            if not self.fleet.get(t, None):
+                s[t] = num
+        return Fleet(s)
