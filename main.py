@@ -53,10 +53,12 @@ def defence_circle(**kwargs):
         Config.driver.get(Config.base_url + "resources")
     else:
         Config.driver.refresh()
+    Config.driver.find_element_by_id('messages_collapsed').click()
+    time.sleep(1)
     fleets = Config.driver.find_elements_by_css_selector('.eventFleet > .hostile')
     missions = {}
     for fleet in fleets:
-        if fleet.get_attribute('data-mission-type') == 1:
+        if fleet.parent.get_attribute('data-mission-type') == 1:
             coords = fleet.find_element_by_css_selectot('.destFleet').text
             arrival_time = fleet.find_element_by_css_selectot('.arrivalTime').text.split(' ')[0].split(':')
 
