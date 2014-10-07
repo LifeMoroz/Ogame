@@ -55,22 +55,25 @@ def defence_circle(**kwargs):
         Config.driver.refresh()
     Config.driver.find_element_by_id('messages_collapsed').click()
     time.sleep(1)
-    fleets = Config.driver.find_elements_by_css_selector('.eventFleet > .hostile')
+    fleets = Config.driver.find_elements_by_css_selector('.eventFleet')
+    for fleet in fleets:
+        if not fleet.find_elements_by_css_selector('.hostile'):
+            fleets.remove(fleet)
     missions = {}
     for fleet in fleets:
-        if fleet.parent.get_attribute('data-mission-type') == 1:
-            coords = fleet.find_element_by_css_selectot('.destFleet').text
-            arrival_time = fleet.find_element_by_css_selectot('.arrivalTime').text.split(' ')[0].split(':')
+        if fleet.get_attribute('data-mission-type') == u'1':
+            coords = fleet.find_element_by_css_selector('.destCoords').text
+            arrival_time = fleet.find_element_by_css_selector('.arrivalTime').text.split(' ')[0].split(':')
 
             missions[fleet.get_attribute('id').split('-')[1]] = \
                 {
-                    'dest': {'galaxy': coords.split[0][2],
+                    'dest': {'galaxy': coords[2],
                              'system': coords.split(':')[1],
                              'position': coords.split(':')[1][:-1]},
                     'arrival_time': int(arrival_time[0]) * 3600 + int(arrival_time[1]) * 60 + int(arrival_time[2])
                 }
 
-    for fleet_id, fleet_params in missions:
+    for fleet_id, fleet_params in missions.iteritems():
         if fleet_params['arrival_time'] - datetime.datetime.now().hour * 3600 - datetime.datetime.now().minute * 60 - \
                 datetime.datetime.now().second < 60:
             for pl_id, pl in kwargs['empire'].planets:
@@ -82,8 +85,10 @@ def defence_circle(**kwargs):
                                                                                     'position': 10},
                                                                             speed=10, mission='Transport',
                                                                             res=Resource(Config.driver))
+            if defence_circle.missions[fleet_params['arrival_time']].mission_status == 0:
+                del defence_circle.missions[fleet_params['arrival_time']]
 
-    for arrival_time, mission in defence_circle.missions:
+    for arrival_time, mission in defence_circle.missions.iteritems():
         if arrival_time > datetime.datetime.now().hour * 3600 - datetime.datetime.now().minute * 60 - \
                 datetime.datetime.now().second:
             mission.stop_mission()
@@ -101,9 +106,10 @@ def main_circle():
     list_activities = []
     empire = Empire()
     for planet_id, planet_info in empire.planets.items():
-        list_activities.append({'time': 0, 'callback': {'function': building_circle,
-                                                        'kwargs': {'planet_id': planet_id,
-                                                                   'planet_info': planet_info}}})
+        pass
+        # list_activities.append({'time': 0, 'callback': {'function': building_circle,
+        #                                                 'kwargs': {'planet_id': planet_id,
+        #                                                            'planet_info': planet_info}}})
     list_activities.append({'time': 0, 'callback': {'function': defence_circle,
                                                     'kwargs': {'empire': empire}}})
     timer = Timer(list_activities)

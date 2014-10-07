@@ -46,7 +46,8 @@ class Mission:
         if speed > 100:
             raise ValueError('More than speed of light?')
         self.mission = Mission.TYPE[mission]
-        self._add_ships(fleet)
+        if self._add_ships(driver, fleet) != 0:
+            self.mission_status = 0
         self.fleet = Fleet(fleet)
         self.target = target
         for k, v in target:
@@ -68,8 +69,11 @@ class Mission:
                 WebDriverWait(driver, 5, 0.5).until(
                     lambda x: x.find_elements_by_css_selector(".fleetDetails").is_displayed(), "Can't send fleet")
                 self.id = driver.find_element_by_css_selector('.timer.tooltip').get_attribute('id').split('_')[1]
+                self.mission_status = 1
 
     def stop_mission(self, driver):
+        if self.mission_status == 0:
+            return
         if driver.current_url == Config.base_url + "movement":
             driver.get(Config.base_url + "movement")
         try:
@@ -79,6 +83,8 @@ class Mission:
 
     @staticmethod
     def _add_ships(driver, fleet):
+        if driver.find_elements_by_id('buttonz'):
+            return -1
         if fleet == 'all':
             driver.find_element_by_css_selector('#sendall').click()
         else:
